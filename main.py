@@ -1,14 +1,32 @@
-import voice as voice
+"""
+The MIT License (MIT)
+
+Copyright (c) 2020 kravtandr
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+"""
+
+
 import discord
-import threading
-from PyQt5.QtCore import Qt, QTimer
-import time
 import asyncio
-from async_timeout import timeout
-from discord.ext import commands
 from discord.ext import tasks, commands
 import youtube_dl
-#from cogs.utils.clip import *
 
 TOKEN = 'token'
 
@@ -62,6 +80,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options,
                    executable="C:/Users/User/PycharmProjects/RACHKO_BOT/ffmpeg/bin/ffmpeg.exe"), data=data)
 
+
 class MyContext(commands.Context):
 
     async def tick(self, value):
@@ -83,6 +102,7 @@ class MyContext(commands.Context):
 class MyBot(commands.Bot):
     vc = "0"
     last_ctx = None
+    is_looped = False
     #vc = discord.VoiceClient
     queue = []
     queue_size = 0
@@ -97,6 +117,7 @@ class MyBot(commands.Bot):
 #bot = commands.Bot(command_prefix='!', description="description")
 bot = MyBot(command_prefix='!', description="RACHKO-BOT")
 queue_async = asyncio.Queue()
+#bot.remove_command('help')
 #ctx.bot.loop.create_task(self.player_loop())
 
 
@@ -130,16 +151,21 @@ class MyCog(commands.Cog):
             if playing or paused:
                 print("playing...")
             else:
-                print("not playing")
-                #check if we have next track
-                if have_next():
-                    print("play next song")
-                    print("getting ctx..." )
-                    ctx = bot.last_ctx
-                    print("got ctx " + str(ctx))
-                    await next(ctx)
+                if bot.is_looped:
+                    await play(ctx= bot.last_ctx, url=bot.queue[0])
+                    print("repeating")
                 else:
-                    print("No next song")
+                    print("not playing")
+                    # check if we have next track
+                    if have_next():
+                        print("play next song")
+                        print("getting ctx...")
+                        ctx = bot.last_ctx
+                        print("got ctx " + str(ctx))
+                        await next(ctx)
+                    else:
+                        print("No next song")
+
         print("-----------------------------------------")
 
 
@@ -157,6 +183,7 @@ def have_next():
     else:
         return False
 
+
 async def setup():
     print("setup")
     bot.add_cog(MyCog(bot))
@@ -171,6 +198,12 @@ async def help_bot(ctx):
     await ctx.send("!pause      - поставить на паузу аудио")
     await ctx.send("!resume     - продолжить воспроизведение")
     await ctx.send("!next       - следующий трек в очереди")
+
+
+@bot.command(pass_context=True)
+async def loop(ctx):  # создаем асинхронную фунцию бота
+    bot.is_looped = not bot.is_looped
+    await ctx.send("Повтор "+str(bot.is_looped))
 
 
 @bot.command(pass_context=True)
@@ -263,7 +296,6 @@ async def play(ctx, *, url):
         if add_task:
             await setup()
             #ctx.bot.loop.create_task(player_loop(ctx))
-
 
 
 @bot.command(pass_context=True)
