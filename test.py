@@ -10,7 +10,7 @@ from discord.ext import tasks, commands
 import youtube_dl
 #from cogs.utils.clip import *
 
-TOKEN = 'NzMwMDE4NDcwODQ2MTM2MzY5.XwRa2g.rMUlYSjB0ysPeGcEoSoGmbR83fg'
+TOKEN = 'token'
 
 players = {}
 
