@@ -21,14 +21,20 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
-
-
+import random
 import discord
 import asyncio
 from discord.ext import tasks, commands
 import youtube_dl
 
-TOKEN = 'token'
+f = open('cfg.txt', 'r')
+i = 0
+for line in f:
+    if i==0:
+        TOKEN = line
+    i+=1
+f.close()
+#TOKEN = 'token'
 
 players = {}
 
@@ -190,6 +196,48 @@ async def setup():
 
 
 @bot.command(pass_context=True)
+async def music(ctx, num = 3):  # создаем асинхронную фунцию бота
+    f = open('music_base.txt', 'r')
+    i = 0
+    count = 0
+    all_found = False
+    nLines = count_lines("music_base.txt")
+    print("LINES = ", nLines)
+
+    while not all_found:
+        rand = random.randint(0, nLines)
+        start = random.randint(0, rand)
+        for line in f:
+            print("i= " + str(i), "count = " + str(count), start, rand)
+            if line.isspace():
+                print("seek 0")
+                f.seek(0)
+            if i >= start and i == rand:
+                if count < int(num):
+                    bot.queue.append(line)
+                    await queue_async.put(line)
+                    print("+ in q " + str(line))
+                    bot.queue_size += 1
+                    count += 1
+                    rand = random.randint(0, nLines)
+                    start = random.randint(0, rand)
+                    i = 0
+                else:
+                    print("all found")
+                    # bot.queue.reverse()
+                    line = await queue_async.get()
+                    await play(ctx=ctx, url=line)
+                    await queue(ctx)
+                    all_found = True
+                    return
+            # print(line)
+            i += 1
+    f.close()
+
+    #await ctx.send(bot.queue_size)
+
+
+@bot.command(pass_context=True)
 async def help_bot(ctx):
     await ctx.send("!help       - помощь")
     await ctx.send("!play       - стрим аудио из вк или yt, если уже что-то играет то трек добавляется в очередь ")
@@ -269,7 +317,8 @@ async def next(ctx):  # создаем асинхронную фунцию бо�
 async def play(ctx, *, url):
     #f = open('music_base.txt', 'w')
     f = open('music_base.txt', 'a')
-    f.write(url+ '\n')
+    f.write(str(url) + '\n')
+    print(str(url) + '\n')
     f.close()
     bot.last_ctx = ctx
     add_task = False
@@ -279,6 +328,7 @@ async def play(ctx, *, url):
         await join(ctx)
         bot.queue_size += 1
         bot.queue.append(url)
+        print("+ in q " + str(url))
         #await queue_async.put(url)
         add_task = True
     if bot.vc.is_playing():
@@ -326,6 +376,11 @@ async def resume(ctx):  # создаем асинхронную фунцию б�
     bot.last_ctx = ctx
     bot.vc.resume()
     await ctx.send("Продолжаем")
+
+def count_lines(filename, chunk_size=1<<13):
+    with open(filename) as file:
+        return sum(chunk.count('\n')
+                   for chunk in iter(lambda: file.read(chunk_size), ''))
 
 
 bot.run(TOKEN)
