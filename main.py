@@ -197,7 +197,6 @@ async def setup():
 
 @bot.command(pass_context=True)
 async def music(ctx, num = 3):  # создаем асинхронную фунцию бота
-    f = open('music_base.txt', 'r')
     i = 0
     count = 0
     all_found = False
@@ -205,9 +204,11 @@ async def music(ctx, num = 3):  # создаем асинхронную фунц
     print("LINES = ", nLines)
 
     while not all_found:
+        f = open('music_base.txt', 'r')
         rand = random.randint(0, nLines)
         start = random.randint(0, rand)
-        for line in f:
+        for line in f: #line.rstrip() for line in l
+            line = line.strip()
             print("i= " + str(i), "count = " + str(count), start, rand)
             if line.isspace():
                 print("seek 0")
@@ -231,8 +232,17 @@ async def music(ctx, num = 3):  # создаем асинхронную фунц
                     all_found = True
                     return
             # print(line)
-            i += 1
-    f.close()
+            else:
+                print("test")
+                if i<start or i>nLines:
+                    i=start
+            print("i = ", i," count = ", count)
+            print("start = ", start, " rand = ", rand)
+            i+=1
+        i = 0
+        f.close()
+
+
 
     #await ctx.send(bot.queue_size)
 
