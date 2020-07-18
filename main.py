@@ -123,7 +123,7 @@ class MyBot(commands.Bot):
 #bot = commands.Bot(command_prefix='!', description="description")
 bot = MyBot(command_prefix='!', description="RACHKO-BOT")
 queue_async = asyncio.Queue()
-#bot.remove_command('help')
+bot.remove_command('help')
 #ctx.bot.loop.create_task(self.player_loop())
 
 
@@ -248,16 +248,37 @@ async def music(ctx, num = 3):  # делает плейлист из уже иг
     #await ctx.send(bot.queue_size)
 
 
-# TODO сделать нормальный хелп
+
 @bot.command(pass_context=True)
-async def help_bot(ctx):
-    await ctx.send("!help       - помощь")
-    await ctx.send("!play       - стрим аудио из вк или yt, если уже что-то играет то трек добавляется в очередь ")
+async def help(ctx):
+    '''
+    await ctx.send("!help - помощь")
+    await ctx.send("!play - аудио из вк или yt, если уже что-то играет то трек добавляется в очередь. \n"
+                   "         (стримы не работают, тк все файлы перед воспроизведением скачиваются) ")
+    await ctx.send("!music <число треков> - создает плейлист из треков, которые уже играли, по умолчанию размер плейлиста = 3")
+    await ctx.send("!queue - выводит в текстовый канал текущий плейлист")
+    await ctx.send("!pause - поставить на паузу аудио")
+    await ctx.send("!resume - продолжить воспроизведение")
+    await ctx.send("!next - следующий трек в очереди")
+    await ctx.send("!cur - текущий трек")
     await ctx.send("!disconnect - отключиться из голосового канала")
-    await ctx.send("!stop       - остановить воспроизведение аудио")
-    await ctx.send("!pause      - поставить на паузу аудио")
-    await ctx.send("!resume     - продолжить воспроизведение")
-    await ctx.send("!next       - следующий трек в очереди")
+    await ctx.send("!stop - остановить воспроизведение аудио")
+    '''
+    await ctx.send("```!help                 -  помощь\n"
+                   "!play                 -  аудио из вк или yt, если уже что-то играет, то трек добавляется в очередь. \n "
+                   "                        (стримы не работают, тк все файлы перед воспроизведением скачиваются)\n"
+                   "!music <число треков> - создает плейлист из треков, которые уже играли, по умолчанию размер плейлиста = 3\n"
+                   "!loop                 -  вкл/выкл повтор\n"
+                   "!queue                -  выводит в текстовый канал текущий плейлист\n"
+                   "!pause                -  поставить на паузу аудио\n"
+                   "!resume               -  продолжить воспроизведение\n"
+                   "!next                 -  следующий трек в очереди\n"
+                   "!cur                  -  текущий трек\n"
+                   "!clear                -  очищает плейлист\n"
+                   "!disconnect           -  отключиться из голосового канала\n"
+                   "!stop                 -  остановить воспроизведение аудио"
+                   "=======================================dev================================================================"
+                   "!format_music_base     -  удаляет одинаковые треки из базы```")
 
 
 @bot.command(pass_context=True)
@@ -269,6 +290,19 @@ async def loop(ctx):  # создаем асинхронную фунцию бо�
 @bot.command(pass_context=True)
 async def cur(ctx):  # создаем асинхронную фунцию бота
     await ctx.send("Сейчас играет: " + str(bot.curr_track))
+
+
+@bot.command(pass_context=True)
+async def clear(ctx):  # очищаем очередь
+    await bot.wait_until_ready()
+    while have_next():
+        if queue_async.qsize() > 0:
+            bot.queue.pop(0)
+            bot.queue_size -= 1
+            url = await queue_async.get()
+    bot.queue = []  # фальшивая очередь для вывода
+    bot.queue_size = 0
+    await ctx.send("Произошло глубинное очищение")
 
 
 @bot.command(pass_context=True)
@@ -399,10 +433,38 @@ async def resume(ctx):  # создаем асинхронную фунцию б�
     bot.vc.resume()
     await ctx.send("Продолжаем")
 
+
 def count_lines(filename, chunk_size=1<<13):
     with open(filename) as file:
         return sum(chunk.count('\n')
                    for chunk in iter(lambda: file.read(chunk_size), ''))
+
+@bot.command(pass_context=True)
+async def format_music_base(ctx):
+    nlines=count_lines("music_base.txt")
+    dnlines=nlines
+    input = open('music_base.txt', 'r')
+    source = open('music_base_tmp.txt', 'w')
+    data=[]
+    for line in input:
+        if line not in data:
+            data.append(line)
+            source.write(line)
+        else:
+            dnlines -= 1
+    if nlines == dnlines:
+        await ctx.send("В базе нет одинаковых треков")
+    else:
+        input.close()
+        source.close()
+        source = open('music_base_tmp.txt', 'r')
+        output = open('music_base.txt', 'w')
+        for line in source:
+            output.write(line)
+        source.close()
+        output.close()
+        print("format music base", nlines, dnlines)
+        await ctx.send("music_base from " + str(nlines) + " to " + str(dnlines))
 
 
 bot.run(TOKEN)
