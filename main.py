@@ -27,21 +27,20 @@ import asyncio
 from discord.ext import tasks, commands
 import youtube_dl
 
+#read cfg.txt
 f = open('cfg.txt', 'r')
 i = 0
 for line in f:
     if i==0:
-        TOKEN = line
+        line = line.split()
+        TOKEN = line[2]
     i+=1
 f.close()
 #TOKEN = 'token'
 
-players = {}
-
 
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
-
 
 ytdl_format_options = {
     'format': 'bestaudio/best',
@@ -106,11 +105,12 @@ class MyContext(commands.Context):
 
 
 class MyBot(commands.Bot):
-    vc = "0"
-    last_ctx = None
-    is_looped = False
+    vc = "0" # очень больно так делать
     #vc = discord.VoiceClient
-    queue = []
+    last_ctx = None # и так тоже
+    is_looped = False
+    curr_track = None
+    queue = []  # фальшивая очередь для вывода
     queue_size = 0
 
     async def get_context(self, message, *, cls=MyContext):
@@ -141,7 +141,7 @@ class MyCog(commands.Cog):
         #self.printer.stop()
 
 
-    @tasks.loop(seconds=5.0)
+    @tasks.loop(seconds=5.0) # main loop
     async def player(self):
         playing = None
         paused = None
@@ -158,8 +158,9 @@ class MyCog(commands.Cog):
                 print("playing...")
             else:
                 if bot.is_looped:
-                    await play(ctx= bot.last_ctx, url=bot.queue[0])
-                    print("repeating")
+                    await play(ctx= bot.last_ctx, url=bot.curr_track)
+                    #print("repeating " +str(bot.queue[0]))
+                    print("repeating " + str(bot.curr_track))
                 else:
                     print("not playing")
                     # check if we have next track
@@ -196,7 +197,7 @@ async def setup():
 
 
 @bot.command(pass_context=True)
-async def music(ctx, num = 3):  # создаем асинхронную фунцию бота
+async def music(ctx, num = 3):  # делает плейлист из уже игравших треков
     i = 0
     count = 0
     all_found = False
@@ -247,6 +248,7 @@ async def music(ctx, num = 3):  # создаем асинхронную фунц
     #await ctx.send(bot.queue_size)
 
 
+# TODO сделать нормальный хелп
 @bot.command(pass_context=True)
 async def help_bot(ctx):
     await ctx.send("!help       - помощь")
@@ -261,7 +263,12 @@ async def help_bot(ctx):
 @bot.command(pass_context=True)
 async def loop(ctx):  # создаем асинхронную фунцию бота
     bot.is_looped = not bot.is_looped
-    await ctx.send("Повтор "+str(bot.is_looped))
+    await ctx.send("Повтор: "+str(bot.is_looped))
+
+
+@bot.command(pass_context=True)
+async def cur(ctx):  # создаем асинхронную фунцию бота
+    await ctx.send("Сейчас играет: " + str(bot.curr_track))
 
 
 @bot.command(pass_context=True)
@@ -280,7 +287,7 @@ async def disconnect(ctx):  # создаем асинхронную фунцию
 
 
 @bot.command(pass_context=True)
-async def play_test(ctx):  # создаем асинхронную фунцию бота
+async def play_test(ctx):  # играет любой mp3 из папки где находится
     bot.vc.play(discord.FFmpegPCMAudio(executable="C:/Users/User/PycharmProjects/RACHKO_BOT/ffmpeg/bin/ffmpeg.exe",
                                     source="testing.mp3"))
     await ctx.send("Playing")
@@ -308,19 +315,23 @@ async def next(ctx):  # создаем асинхронную фунцию бо�
     bot.last_ctx = ctx
     await stop(ctx)
     #await ctx.send("Стоп Размер очереди - " + str(bot.queue_size))
-    if queue_async.qsize() > 0:
-        print("get next track (next)")
-        bot.queue.pop(0)
-        bot.queue_size -= 1
-        url = await queue_async.get()
-        #await play(ctx=ctx, url=bot.queue[0])
-        print("start playing " + str(url))
-        await play(ctx=ctx, url=url)
+    if bot.is_looped:
+        await play(ctx=ctx, url=bot.curr_track)
+        await ctx.send("Повтор")
     else:
-        print("no more tracks")
-        #time.sleep(2)
-        #await ctx.send("Ожидаю трек")
-    #await queue(ctx)
+        if queue_async.qsize() > 0:
+            print("get next track (next)")
+            bot.queue.pop(0)
+            bot.queue_size -= 1
+            url = await queue_async.get()
+            # await play(ctx=ctx, url=bot.queue[0])
+            print("start playing " + str(url))
+            await play(ctx=ctx, url=url)
+            await ctx.send("Следующий трек")
+        else:
+            print("no more tracks")
+            # time.sleep(2)
+            await ctx.send("Ало!!! где треки?")
 
 
 @bot.command(pass_context=True)
@@ -350,6 +361,7 @@ async def play(ctx, *, url):
     else:
         print("Воспроизведение " + str(url))
         player = await YTDLSource.from_url(url, loop=bot.loop) #, stream=True
+        bot.curr_track = url
         bot.vc.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
         # await ctx.send("Поток пошел")
         print("Поток пошел")
