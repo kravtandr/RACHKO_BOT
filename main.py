@@ -233,7 +233,7 @@ async def music(ctx, num = 3):  # создаем асинхронную фунц
                     return
             # print(line)
             else:
-                print("test")
+                print("i < start and i != rand")
                 if i<start or i>nLines:
                     i=start
             print("i = ", i," count = ", count)
