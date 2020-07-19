@@ -1,7 +1,7 @@
 # RACHKO_BOT
 discord music bot
 
-"I am beginer at programming so be ready for code smell"
+"It is my first serious project on python so be ready for code smell"
 
 Install:
 pip install discord
