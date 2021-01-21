@@ -1,6 +1,6 @@
 # RACHKO_BOT
 discord music bot
-
+!!! NOT WORKING ON CURRENT DISCORD VERSION !!!
 "It is my first serious project on python so be ready for code smell"
 
 Install:
